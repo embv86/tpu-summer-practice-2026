@@ -270,6 +270,41 @@ header {
     margin-top: 1.25rem;
 }
 
+.download-group {
+    display: flex;
+    gap: 0.6rem;
+    align-items: center;
+}
+
+.format-select {
+    background: rgba(0, 0, 0, 0.35);
+    color: var(--text-primary);
+    border: 1px solid var(--border-glass);
+    border-radius: var(--radius-md);
+    padding: 0.75rem 0.85rem;
+    font-family: var(--font-main);
+    font-weight: 600;
+    font-size: 0.88rem;
+    outline: none;
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.format-select:focus, .format-select:hover:not(:disabled) {
+    border-color: var(--accent-secondary);
+    background: rgba(0, 0, 0, 0.55);
+}
+
+.format-select:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.format-select option {
+    background: #121620;
+    color: var(--text-primary);
+}
+
 .btn {
     flex: 1;
     padding: 0.8rem 1.25rem;
@@ -507,11 +542,6 @@ header {
     text-align: center;
     padding: 4rem 2rem;
     color: var(--text-muted);
-}
-.empty-icon {
-    font-size: 3.5rem;
-    margin-bottom: 1rem;
-    opacity: 0.4;
 }
 
 .tab-content {

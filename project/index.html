@@ -38,16 +38,14 @@
                     <!-- Область Drag & Drop -->
                     <div class="drop-zone" id="dropZone">
                         <div class="drop-icon">
-                            <svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="url(#accentGrad)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="url(#accentGrad)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                                 <defs>
-                                    <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <linearGradient id="accentGrad" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse">
                                         <stop offset="0%" stop-color="#6366f1" />
                                         <stop offset="100%" stop-color="#06b6d4" />
                                     </linearGradient>
                                 </defs>
-                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                                <polyline points="7 10 12 15 17 10"></polyline>
-                                <line x1="12" y1="3" x2="12" y2="15"></line>
+                                <path d="M12 3v11M6 9l6 6 6-6M4 19h16"></path>
                             </svg>
                         </div>
                         <div class="drop-text">Перетащите изображение сюда</div>
@@ -73,9 +71,18 @@
                         <button class="btn btn-danger" id="btnAbort" disabled>⛔ Прервать</button>
                     </div>
 
-                    <button class="btn btn-secondary" id="btnDownload" disabled style="width: 100%; margin-top: 0.75rem;">
-                        💾 Скачать готовое PNG
-                    </button>
+                    <!-- Блок скачивания с выбором формата -->
+                    <div class="download-group" style="margin-top: 0.85rem;">
+                        <select id="downloadFormatSelect" class="format-select" disabled>
+                            <option value="png">PNG (.png)</option>
+                            <option value="jpg">JPG (.jpg)</option>
+                            <option value="bmp">BMP (.bmp)</option>
+                            <option value="heic">HEIC (.heic)</option>
+                        </select>
+                        <button class="btn btn-secondary" id="btnDownload" disabled style="flex: 1;">
+                            💾 Скачать результат
+                        </button>
+                    </div>
                 </aside>
 
                 <!-- Панель визуального сравнения -->
@@ -149,8 +156,8 @@ console.<span class="code-function">log</span>(status.progress); <span class="co
 <span class="code-comment">// 3. Метод прерывания задачи</span>
 <span class="code-comment">// api.abortTask(taskId);</span>
 
-<span class="code-comment">// 4. Метод получения готового изображения</span>
-<span class="code-keyword">const</span> resultBlob = <span class="code-keyword">await</span> api.<span class="code-function">getResult</span>(taskId, <span class="code-string">'blob'</span>);
+<span class="code-comment">// 4. Метод получения готового изображения (формат: 'png', 'jpg', 'bmp', 'heic')</span>
+<span class="code-keyword">const</span> resultBlob = <span class="code-keyword">await</span> api.<span class="code-function">getResult</span>(taskId, <span class="code-string">'png'</span>);
 imageElement.src = URL.<span class="code-function">createObjectURL</span>(resultBlob);</code></pre>
             </div>
         </section>

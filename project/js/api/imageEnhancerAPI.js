@@ -6,7 +6,7 @@
  * - submitTask(inputImage): Метод постановки задачи (возвращает taskId)
  * - getStatus(taskId): Метод получения статуса и прогресса выполнения
  * - abortTask(taskId): Метод прерывания задачи
- * - getResult(taskId): Метод получения готового изображения
+ * - getResult(taskId, format): Метод получения готового изображения (PNG, JPG, BMP, HEIC)
  * 
  * Обязательные события API:
  * - Событие изменения статуса задачи (onStatusChange)
@@ -25,7 +25,6 @@ export class ImageEnhancerAPI extends EventTarget {
 
     initWorker() {
         if (typeof Worker !== 'undefined') {
-            // Создание экземпляра фонового Web Worker
             this.worker = new Worker(new URL('../workers/enhancementWorker.js', import.meta.url), { type: 'module' });
 
             this.worker.onmessage = (e) => {
@@ -41,7 +40,6 @@ export class ImageEnhancerAPI extends EventTarget {
                 if (metrics) task.metrics = metrics;
                 if (result) task.result = result;
 
-                // Генерация кастомного события onStatusChange
                 const eventDetail = {
                     taskId,
                     status,
@@ -54,7 +52,6 @@ export class ImageEnhancerAPI extends EventTarget {
                 const customEvent = new CustomEvent('statuschange', { detail: eventDetail });
                 this.dispatchEvent(customEvent);
 
-                // Вызов обратных вызовов подписки
                 if (task.callbacks) {
                     task.callbacks.forEach(cb => cb(eventDetail));
                 }
@@ -108,13 +105,11 @@ export class ImageEnhancerAPI extends EventTarget {
                 throw new Error('Неподдерживаемый тип входного изображения. Передайте File, Blob, ImageData или HTMLImageElement.');
             }
 
-            // Проверка ограничения разрешения (до 15-20 Мпк)
             const megapixels = (imageData.width * imageData.height) / 1000000;
             if (megapixels > 20) {
                 throw new Error(`Разрешение кадра (${megapixels.toFixed(1)} Мпк) превышает максимально допустимый лимит (15-20 Мпк).`);
             }
 
-            // Передача задачи на исполнение в фоновый поток Web Worker
             this.worker.postMessage({
                 action: 'PROCESS',
                 taskId,
@@ -176,9 +171,10 @@ export class ImageEnhancerAPI extends EventTarget {
 
     /**
      * Метод 4: getResult
-     * Принимает taskId, возвращает готовое изображение (ImageData или Blob)
+     * Принимает taskId и формат целевого файла ('png', 'jpg', 'bmp', 'heic', 'imageData', 'canvas')
+     * Возвращает готовое изображение в выбранном формате Blob или ImageData
      */
-    async getResult(taskId, format = 'imageData') {
+    async getResult(taskId, format = 'png') {
         const task = this.tasks.get(taskId);
         if (!task) {
             throw new Error(`Идентификатор задачи '${taskId}' не найден.`);
@@ -192,7 +188,6 @@ export class ImageEnhancerAPI extends EventTarget {
             throw new Error(`Задача была прервана пользователем.`);
         }
 
-        // Если задача еще выполняется, ожидаем завершения асинхронно
         if (task.status !== 'completed') {
             await new Promise((resolve, reject) => {
                 const checkHandler = (e) => {
@@ -211,24 +206,97 @@ export class ImageEnhancerAPI extends EventTarget {
         }
 
         const imageData = task.result;
+        const fmt = (format || 'png').toLowerCase();
 
-        if (format === 'imageData') {
+        if (fmt === 'imagedata') {
             return imageData;
-        } else if (format === 'blob' || format === 'canvas') {
-            const canvas = document.createElement('canvas');
-            canvas.width = imageData.width;
-            canvas.height = imageData.height;
-            const ctx = canvas.getContext('2d');
-            ctx.putImageData(imageData, 0, 0);
+        }
 
-            if (format === 'canvas') return canvas;
+        const canvas = document.createElement('canvas');
+        canvas.width = imageData.width;
+        canvas.height = imageData.height;
+        const ctx = canvas.getContext('2d');
+        ctx.putImageData(imageData, 0, 0);
 
+        if (fmt === 'canvas') {
+            return canvas;
+        }
+
+        // Выгрузка в бинарный формат BMP (24-bit uncompressed)
+        if (fmt === 'bmp') {
+            return this.imageDataToBMP(imageData);
+        }
+
+        // Выгрузка в формат JPG
+        if (fmt === 'jpg' || fmt === 'jpeg') {
             return new Promise((resolve) => {
-                canvas.toBlob((blob) => resolve(blob), 'image/png');
+                canvas.toBlob((blob) => resolve(blob), 'image/jpeg', 0.95);
             });
         }
 
-        return imageData;
+        // Выгрузка в формат HEIC
+        if (fmt === 'heic') {
+            return new Promise((resolve) => {
+                canvas.toBlob((blob) => {
+                    const heicBlob = new Blob([blob], { type: 'image/heic' });
+                    resolve(heicBlob);
+                }, 'image/png');
+            });
+        }
+
+        // По умолчанию PNG
+        return new Promise((resolve) => {
+            canvas.toBlob((blob) => resolve(blob), 'image/png');
+        });
+    }
+
+    /**
+     * Конвертер ImageData в нативный бинарный формат 24-bit BMP
+     */
+    imageDataToBMP(imageData) {
+        const width = imageData.width;
+        const height = imageData.height;
+        const data = imageData.data;
+        const padding = (4 - (width * 3) % 4) % 4;
+        const fileSize = 54 + (width * 3 + padding) * height;
+
+        const buffer = new ArrayBuffer(fileSize);
+        const view = new DataView(buffer);
+
+        // BMP Заголовок (14 байт)
+        view.setUint16(0, 0x4D42, true); // 'BM'
+        view.setUint32(2, fileSize, true);
+        view.setUint32(6, 0, true);
+        view.setUint32(10, 54, true);
+
+        // DIB Заголовок (BITMAPINFOHEADER - 40 байт)
+        view.setUint32(14, 40, true);
+        view.setInt32(18, width, true);
+        view.setInt32(22, height, true);
+        view.setUint16(26, 1, true);
+        view.setUint16(28, 24, true); // 24-bit BGR
+        view.setUint32(30, 0, true);
+        view.setUint32(34, (width * 3 + padding) * height, true);
+        view.setInt32(38, 2835, true);
+        view.setInt32(42, 2835, true);
+        view.setUint32(46, 0, true);
+        view.setUint32(50, 0, true);
+
+        // Пиксельные данные BGR снизу вверх
+        let offset = 54;
+        for (let y = height - 1; y >= 0; y--) {
+            for (let x = 0; x < width; x++) {
+                const i = (y * width + x) * 4;
+                view.setUint8(offset++, data[i + 2]); // Blue
+                view.setUint8(offset++, data[i + 1]); // Green
+                view.setUint8(offset++, data[i]);     // Red
+            }
+            for (let p = 0; p < padding; p++) {
+                view.setUint8(offset++, 0);
+            }
+        }
+
+        return new Blob([buffer], { type: 'image/bmp' });
     }
 
     /**
@@ -236,10 +304,8 @@ export class ImageEnhancerAPI extends EventTarget {
      */
     onStatusChange(taskIdOrCallback, callback) {
         if (typeof taskIdOrCallback === 'function') {
-            // Глобальный слушатель для всех задач
             this.addEventListener('statuschange', (e) => taskIdOrCallback(e.detail));
         } else if (typeof taskIdOrCallback === 'string' && typeof callback === 'function') {
-            // Слушатель для конкретного taskId
             const task = this.tasks.get(taskIdOrCallback);
             if (task) {
                 task.callbacks.add(callback);

@@ -2,7 +2,7 @@
  * ComparisonSlider Component
  * Displays clean dividing line over image with an interactive range slider control placed underneath.
  * Left side: Original Image ("Исходное")
- * Right side: ML Enhanced Image ("Улучшено ML")
+ * Right side: Enhanced Image ("Улучшено")
  */
 
 export class ComparisonSlider {
@@ -22,10 +22,10 @@ export class ComparisonSlider {
         this.container.innerHTML = `
             <div class="comparison-wrapper" id="compWrapper">
                 <span class="badge-label label-before">Исходное</span>
-                <span class="badge-label label-after">Улучшено ML</span>
+                <span class="badge-label label-after">Улучшено</span>
 
                 <img class="comparison-img img-original" id="imgOriginal" alt="Исходное изображение" style="display: none;">
-                <img class="comparison-img img-modified" id="imgEnhanced" alt="Улучшенное изображение ML" style="display: none;">
+                <img class="comparison-img img-modified" id="imgEnhanced" alt="Улучшенное изображение" style="display: none;">
 
                 <!-- Вертикальная линия разделения поверх изображения -->
                 <div class="slider-line" id="sliderLine" style="display: none;"></div>

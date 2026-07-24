@@ -1,7 +1,7 @@
 /**
  * Главная логика приложения
  * Инициализирует пользовательский интерфейс, связывает ImageEnhancerAPI,
- * обрабатывает загрузку Drag & Drop и управляет слайдером сравнения.
+ * обрабатывает загрузку Drag & Drop и скачивание в форматах PNG, JPG, BMP, HEIC.
  */
 
 import { ImageEnhancerAPI } from './api/imageEnhancerAPI.js';
@@ -21,6 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnProcess = document.getElementById('btnProcess');
     const btnAbort = document.getElementById('btnAbort');
     const btnDownload = document.getElementById('btnDownload');
+    const downloadFormatSelect = document.getElementById('downloadFormatSelect');
 
     const statusBadge = document.getElementById('statusBadge');
     const progressBarFill = document.getElementById('progressBarFill');
@@ -61,7 +62,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // 3. Обработка выбор файлов и Drag and Drop
+    // 3. Обработка выбора файлов и Drag and Drop
     dropZone.addEventListener('click', () => fileInput.click());
 
     dropZone.addEventListener('dragover', (e) => {
@@ -90,10 +91,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (currentOriginalUrl) URL.revokeObjectURL(currentOriginalUrl);
         currentOriginalUrl = URL.createObjectURL(file);
 
-        // Отображение исходного файла в превью
         slider.setImages(currentOriginalUrl, currentOriginalUrl);
         btnProcess.disabled = false;
         btnDownload.disabled = true;
+        downloadFormatSelect.disabled = true;
         updateStatus('idle', 0, `Загружен файл: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} МБ)`);
     }
 
@@ -116,6 +117,7 @@ document.addEventListener('DOMContentLoaded', () => {
             btnProcess.disabled = false;
             btnAbort.disabled = true;
             btnDownload.disabled = false;
+            downloadFormatSelect.disabled = false;
         } else if (status === 'failed' || status === 'aborted') {
             btnProcess.disabled = false;
             btnAbort.disabled = true;
@@ -129,15 +131,15 @@ document.addEventListener('DOMContentLoaded', () => {
         btnProcess.disabled = true;
         btnAbort.disabled = false;
         btnDownload.disabled = true;
+        downloadFormatSelect.disabled = true;
 
         activeTaskId = await api.submitTask(currentFileOrImageData);
 
         try {
-            const resultBlob = await api.getResult(activeTaskId, 'blob');
+            const resultBlob = await api.getResult(activeTaskId, 'png');
             if (currentEnhancedUrl) URL.revokeObjectURL(currentEnhancedUrl);
             currentEnhancedUrl = URL.createObjectURL(resultBlob);
 
-            // Обновление слайдера готовым результатом
             slider.setImages(currentOriginalUrl, currentEnhancedUrl);
         } catch (err) {
             console.error('Ошибка улучшения изображения:', err);
@@ -150,12 +152,28 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    btnDownload.addEventListener('click', () => {
-        if (!currentEnhancedUrl) return;
-        const a = document.createElement('a');
-        a.href = currentEnhancedUrl;
-        a.download = `ml_enhanced_${Date.now()}.png`;
-        a.click();
+    // Скачивание в выбранном формате (PNG, JPG, BMP, HEIC)
+    btnDownload.addEventListener('click', async () => {
+        if (!activeTaskId) return;
+
+        const selectedFormat = downloadFormatSelect.value || 'png';
+        btnDownload.disabled = true;
+        btnDownload.textContent = '⏳ Сохранение...';
+
+        try {
+            const blob = await api.getResult(activeTaskId, selectedFormat);
+            const downloadUrl = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = downloadUrl;
+            a.download = `ml_enhanced_${Date.now()}.${selectedFormat}`;
+            a.click();
+            setTimeout(() => URL.revokeObjectURL(downloadUrl), 5000);
+        } catch (err) {
+            console.error('Ошибка скачивания файла:', err);
+        } finally {
+            btnDownload.disabled = false;
+            btnDownload.textContent = '💾 Скачать результат';
+        }
     });
 
     function updateStatus(status, progress, message) {
