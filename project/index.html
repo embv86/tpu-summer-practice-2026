@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Система улучшения изображений в реальном времени с ML в браузере</title>
+    <meta name="description" content="Улучшение изображений в реальном времени посредством ML-модели в браузере. Автоматическая коррекция яркости, контрастности и цветности до 15 Мпк.">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Stylesheet -->
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Шапка -->
+        <header>
+            <div class="brand">
+                <span class="brand-tag">ML-движок в браузере • &lt; 10 МБ</span>
+            </div>
+
+            <nav class="nav-tabs">
+                <button class="tab-btn active" data-tab="tabEnhancer">✨ Улучшение в реальном времени</button>
+                <button class="tab-btn" data-tab="tabAPI">💻 Спецификация API</button>
+            </nav>
+        </header>
+
+        <!-- Вкладка 1: Улучшение изображений -->
+        <main id="tabEnhancer" class="tab-content active">
+            <div class="app-grid">
+                <!-- Панель управления и загрузки -->
+                <aside class="glass-card">
+                    <h2 class="card-title">📥 Загрузка и управление</h2>
+                    
+                    <!-- Область Drag & Drop -->
+                    <div class="drop-zone" id="dropZone">
+                        <div class="drop-icon">
+                            <svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="url(#accentGrad)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                                <defs>
+                                    <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                        <stop offset="0%" stop-color="#6366f1" />
+                                        <stop offset="100%" stop-color="#06b6d4" />
+                                    </linearGradient>
+                                </defs>
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="7 10 12 15 17 10"></polyline>
+                                <line x1="12" y1="3" x2="12" y2="15"></line>
+                            </svg>
+                        </div>
+                        <div class="drop-text">Перетащите изображение сюда</div>
+                        <div class="drop-subtext">Поддержка JPG, PNG, HEIC, BMP до 15 Мпк</div>
+                        <input type="file" id="fileInput" class="file-input" accept="image/jpeg,image/png,image/heic,image/bmp">
+                    </div>
+
+                    <!-- Панель статуса выполнения -->
+                    <div class="status-panel">
+                        <div class="status-header">
+                            <span style="font-weight:600; font-size:0.85rem; color:var(--text-secondary);">Статус задачи Web Worker</span>
+                            <span class="status-badge idle" id="statusBadge">ОЖИДАНИЕ</span>
+                        </div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-bar-fill" id="progressBarFill"></div>
+                        </div>
+                        <div class="status-msg" id="statusMsg">Готово к обработке</div>
+                    </div>
+
+                    <!-- Кнопки действий -->
+                    <div class="action-group">
+                        <button class="btn btn-primary" id="btnProcess" disabled>🚀 Улучшить изображение</button>
+                        <button class="btn btn-danger" id="btnAbort" disabled>⛔ Прервать</button>
+                    </div>
+
+                    <button class="btn btn-secondary" id="btnDownload" disabled style="width: 100%; margin-top: 0.75rem;">
+                        💾 Скачать готовое PNG
+                    </button>
+                </aside>
+
+                <!-- Панель визуального сравнения -->
+                <section class="glass-card">
+                    <h2 class="card-title">🔍 Сравнение «До» и «После»</h2>
+                    
+                    <!-- Область отображения картинки -->
+                    <div class="preview-container" id="comparisonContainer">
+                        <!-- Рендерится через ComparisonSlider -->
+                    </div>
+
+                    <!-- Ползунок-слайдер под изображением -->
+                    <div class="slider-control-panel">
+                        <input type="range" min="0" max="100" value="50" class="range-slider" id="sliderRange" disabled>
+                    </div>
+
+                    <!-- Сетка подобранных ML-параметров -->
+                    <div class="metrics-grid">
+                        <div class="metric-card">
+                            <div class="metric-val" id="valBrightness">--</div>
+                            <div class="metric-lbl">Яркость</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-val" id="valContrast">--</div>
+                            <div class="metric-lbl">Контрастность</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-val" id="valColorfulness">--</div>
+                            <div class="metric-lbl">Цветность</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-val" id="valGamma">--</div>
+                            <div class="metric-lbl">Гамма-коррекция</div>
+                        </div>
+                    </div>
+
+                    <!-- Статистика производительности -->
+                    <div style="display:flex; justify-content:space-between; margin-top: 1rem; font-size: 0.85rem; color: var(--text-muted);">
+                        <div>Время обработки: <strong id="valTime" style="color:var(--text-primary);">--</strong></div>
+                        <div>Разрешение: <strong id="valResolution" style="color:var(--text-primary);">--</strong></div>
+                    </div>
+                </section>
+            </div>
+        </main>
+
+        <!-- Вкладка 2: Документация API -->
+        <section id="tabAPI" class="tab-content">
+            <div class="glass-card">
+                <h2 class="card-title">💻 Спецификация API программного модуля</h2>
+                <p style="color:var(--text-secondary); margin-bottom: 1.5rem;">
+                    Система предоставляет автономный класс <code>ImageEnhancerAPI</code> для асинхронного запуска задач в Web Worker с поддержкой методов постановки, получения статуса, прерывания и получения результата, а также событий изменения статуса.
+                </p>
+
+                <h3 style="color:var(--accent-secondary); margin-bottom:0.75rem;">1. Описание методов и пример использования</h3>
+                <pre class="code-block"><code><span class="code-keyword">import</span> { ImageEnhancerAPI } <span class="code-keyword">from</span> <span class="code-string">'./js/api/imageEnhancerAPI.js'</span>;
+
+<span class="code-keyword">const</span> api = <span class="code-keyword">new</span> <span class="code-function">ImageEnhancerAPI</span>();
+
+<span class="code-comment">// Подписка на событие изменения статуса задачи</span>
+api.<span class="code-function">onStatusChange</span>((event) => {
+    console.<span class="code-function">log</span>(<span class="code-string">`Задача ${event.taskId} -> Статус: ${event.status} (${event.progress}%)`</span>);
+});
+
+<span class="code-comment">// 1. Метод постановки задачи (принимает File, Blob, ImageData или HTMLImageElement)</span>
+<span class="code-keyword">const</span> taskId = <span class="code-keyword">await</span> api.<span class="code-function">submitTask</span>(fileInput.files[0]);
+
+<span class="code-comment">// 2. Метод получения статуса задачи</span>
+<span class="code-keyword">const</span> status = api.<span class="code-function">getStatus</span>(taskId);
+console.<span class="code-function">log</span>(status.progress); <span class="code-comment">// Прогресс от 0 до 100</span>
+
+<span class="code-comment">// 3. Метод прерывания задачи</span>
+<span class="code-comment">// api.abortTask(taskId);</span>
+
+<span class="code-comment">// 4. Метод получения готового изображения</span>
+<span class="code-keyword">const</span> resultBlob = <span class="code-keyword">await</span> api.<span class="code-function">getResult</span>(taskId, <span class="code-string">'blob'</span>);
+imageElement.src = URL.<span class="code-function">createObjectURL</span>(resultBlob);</code></pre>
+            </div>
+        </section>
+    </div>
+
+    <!-- Скрипты -->
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>
