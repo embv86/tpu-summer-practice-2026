@@ -6,6 +6,7 @@ import subprocess
 import numpy as np
 import pandas as pd
 
+# Настройка переменных окружения для Hadoop и Python в PySpark
 if "HADOOP_CONF_DIR" not in os.environ:
     os.environ["HADOOP_CONF_DIR"] = "/usr/local/hadoop/etc/hadoop"
 
@@ -25,9 +26,9 @@ from sklearn.pipeline import Pipeline
 
 
 def main():
-    print("Starting Spark Application for HW2...")
+    print("Запуск приложения Spark для HW2...")
 
-    # 1. Start SparkSession with YARN master, 2 executors
+    # 1. Инициализация SparkSession с мастером YARN и 2 исполнителями (executors)
     spark = (
         SparkSession.builder
         .appName("SparkExperimentsHW2")
@@ -46,11 +47,13 @@ def main():
         .getOrCreate()
     )
     sc = spark.sparkContext
-    print("Connected to YARN master / HDFS successfully.")
+    print("Успешное подключение к YARN master и HDFS.")
 
+    # Вспомогательная функция записи текстовых результатов в HDFS
     def write_to_hdfs(filepath, text_content):
         written = False
         try:
+            # Запись через прямой JVM FileSystem API
             Path = sc._gateway.jvm.org.apache.hadoop.fs.Path
             FileSystem = sc._gateway.jvm.org.apache.hadoop.fs.FileSystem
             conf = sc._jsc.hadoopConfiguration()
@@ -59,37 +62,38 @@ def main():
             out_stream = fs.create(hdfs_path, True)
             out_stream.write(text_content.encode("utf-8"))
             out_stream.close()
-            print(f"Wrote to HDFS via JVM FileSystem API: {filepath}")
+            print(f"Запись в HDFS через JVM FileSystem API прошла успешно: {filepath}")
             written = True
         except Exception as ex:
-            print(f"JVM FileSystem write warning: {ex}")
+            print(f"Предупреждение записи через JVM FileSystem: {ex}")
 
+        # Запасной вариант через HDFS CLI
         if not written:
             try:
                 tmp_local = "/tmp/spark_exp_out.txt"
                 with open(tmp_local, "w", encoding="utf-8") as f:
                     f.write(text_content)
                 subprocess.run(["hdfs", "dfs", "-put", "-f", tmp_local, filepath], check=True)
-                print(f"Wrote to HDFS via CLI: {filepath}")
+                print(f"Запись в HDFS через CLI прошла успешно: {filepath}")
             except Exception as cli_ex:
-                print(f"CLI write error: {cli_ex}")
+                print(f"Ошибка записи через CLI: {cli_ex}")
 
-    # Initial empty file creation
+    # Начальное создание пустого файла результатов
     write_to_hdfs("/sparkExperiments.txt", "")
 
-    # Task 2: Stages and tasks for count() of ratings and tags
+    # Задача 2: Подсчет количества строк в ratings и tags (стадии и задачи)
     ratings_raw = spark.read.option("header", "true").csv("/ml-latest-small/ratings.csv")
     tags_raw = spark.read.option("header", "true").csv("/ml-latest-small/tags.csv")
 
     ratings_cnt = ratings_raw.count()
     tags_cnt = tags_raw.count()
-    print(f"Count ratings: {ratings_cnt}, count tags: {tags_cnt}")
+    print(f"Количество оценок: {ratings_cnt}, количество тегов: {tags_cnt}")
 
     stages_n = 2
     tasks_m = 2
     line1 = f"stages:{stages_n} tasks:{tasks_m}"
 
-    # Typed DataFrames
+    # Приведение типов столбцов DataFrames
     ratings = ratings_raw.withColumn("userId", col("userId").cast("long")) \
                          .withColumn("movieId", col("movieId").cast("long")) \
                          .withColumn("rating", col("rating").cast("double")) \
@@ -100,16 +104,16 @@ def main():
                    .withColumn("tag", col("tag").cast("string")) \
                    .withColumn("timestamp", col("timestamp").cast("double"))
 
-    # Task 3: Unique films and users
+    # Задача 3: Подсчет уникальных фильмов и пользователей
     films_unique = ratings.select("movieId").distinct().count()
     users_unique = ratings.select("userId").distinct().count()
     line2 = f"filmsUnique:{films_unique} usersUnique:{users_unique}"
 
-    # Task 4: Good ratings >= 4.0
+    # Задача 4: Фильтрация хороших оценок (rating >= 4.0)
     good_rating = ratings.filter(col("rating") >= 4.0).count()
     line3 = f"goodRating:{good_rating}"
 
-    # Task 5: Time difference per (userId, movieId) pair using min tag timestamp
+    # Задача 5: Средняя разница во времени между оценкой и первыми тегами
     tags_first_time = tags.groupBy("userId", "movieId").agg(spark_min("timestamp").alias("t_time"))
     r_t = ratings.select("userId", "movieId", col("timestamp").alias("r_time"))
     j_t = tags_first_time.join(r_t, on=["userId", "movieId"], how="inner")
@@ -119,14 +123,14 @@ def main():
         time_diff_val = 0.0
     line4 = f"timeDifference:{time_diff_val}"
 
-    # Task 6: Mean user rating
+    # Задача 6: Средняя средних оценок пользователей
     user_avgs = ratings.groupBy("userId").agg(avg("rating").alias("user_avg"))
     avg_rating_val = user_avgs.select(avg("user_avg")).first()[0]
     if avg_rating_val is None:
         avg_rating_val = 0.0
     line5 = f"avgRating:{avg_rating_val}"
 
-    # Task 7: ML Pipeline & UDF
+    # Задача 7: Обучение модели ML (TF-IDF + SGDRegressor) и расчёт RMSE
     df_ml = tags.join(
         ratings.select("userId", "movieId", "rating"),
         on=["userId", "movieId"],
@@ -147,6 +151,7 @@ def main():
     rmse_val = float(np.sqrt(mean_squared_error(y, y_pred)))
     line6 = f"rmse:{rmse_val}"
 
+    # Передача обученной модели в Broadcast переменную для PySpark UDF
     b_model = sc.broadcast(pipeline)
 
     @udf(returnType=FloatType())
@@ -158,17 +163,18 @@ def main():
 
     try:
         pred_df = df_ml.withColumn("predicted_rating", predict_udf(col("tag")))
-        print("Attempting to show 50 UDF predictions:")
+        print("Вывод первых 50 предсказаний модели:")
         pred_df.show(50, truncate=False)
     except Exception as udf_ex:
-        print(f"PySpark UDF show execution warning (safely caught): {udf_ex}")
+        print(f"Предупреждение вызова UDF: {udf_ex}")
 
+    # Формирование и запись итогового текста результатов
     results = f"{line1}\n{line2}\n{line3}\n{line4}\n{line5}\n{line6}\n"
-    print("=== COMPUTED RESULTS ===")
+    print("=== РАССЧИТАННЫЕ РЕЗУЛЬТАТЫ ===")
     print(results)
 
     write_to_hdfs("/sparkExperiments.txt", results)
-    print("Completed HW2 successfully.")
+    print("Выполнение HW2 успешно завершено.")
 
 
 if __name__ == "__main__":

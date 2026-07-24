@@ -1,5 +1,6 @@
 #!/bin/bash
 set -e
 
-echo "Starting PyFlink Streaming HW3 Application..."
+# Запуск приложения потоковой обработки PyFlink
+echo "Запуск приложения PyFlink Streaming HW3..."
 exec python3 /app/main.py

@@ -1,11 +1,13 @@
+# Базовый образ с Java 8 (Eclipse Temurin JRE)
 FROM eclipse-temurin:8-jre-jammy
 
+# Переменные окружения Hadoop
 ENV HADOOP_VERSION=3.3.6
 ENV HADOOP_HOME=/usr/local/hadoop
 ENV HADOOP_CONF_DIR=/usr/local/hadoop/etc/hadoop
 ENV PATH=$PATH:$HADOOP_HOME/bin:$HADOOP_HOME/sbin
 
-# Install Python 3, pip, curl, procps
+# Установка Python 3, pip, curl и дополнительных утилит
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
     python3-pip \
@@ -13,7 +15,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy and install Hadoop client
+# Копирование и распаковка клиента Hadoop
 COPY hadoop-${HADOOP_VERSION}.tar.gz /tmp/
 RUN tar -xzf /tmp/hadoop-$HADOOP_VERSION.tar.gz -C /usr/local/ && \
     mv /usr/local/hadoop-$HADOOP_VERSION /usr/local/hadoop && \
@@ -21,19 +23,19 @@ RUN tar -xzf /tmp/hadoop-$HADOOP_VERSION.tar.gz -C /usr/local/ && \
 
 WORKDIR /app
 
-# Install Python dependencies
+# Установка зависимостей Python (PySpark, scikit-learn, pandas, numpy)
 COPY requirements.txt .
 RUN pip3 install --no-cache-dir -r requirements.txt
 
-# Bake ml-latest-small dataset into the image at build time
+# Предварительная загрузка датасета ml-latest-small на этапе сборки образа
 RUN curl -s -L -o /tmp/ml.zip https://files.grouplens.org/datasets/movielens/ml-latest-small.zip && \
     python3 -c "import zipfile; zipfile.ZipFile('/tmp/ml.zip').extractall('/app')" && \
     rm /tmp/ml.zip
 
-# Copy application code
+# Копирование исходного кода приложения
 COPY app /app
 
-# Copy entrypoint script
+# Копирование скрипта точки входа
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 

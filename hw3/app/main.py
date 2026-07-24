@@ -5,6 +5,7 @@ import logging
 from pyflink.common import Configuration
 from pyflink.common.typeinfo import Types
 
+# Поддержка различных версий экспорта классов в PyFlink
 try:
     from pyflink.common import SimpleStringSchema
 except ImportError:
@@ -38,9 +39,11 @@ from pyflink.datastream.formats.json import JsonRowDeserializationSchema
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("PyFlinkKafkaApp")
 
+# Настройки подключения к Kafka
 BOOTSTRAP_SERVERS = os.environ.get("KAFKA_BOOTSTRAP_SERVERS", "192.168.34.2:9092")
 INPUT_TOPIC = "input_topic"
 
+# Вспомогательные функции парсинга полей сообщений
 def parse_device_id(row):
     return int(getattr(row, 'device_id', row[0]))
 
@@ -50,6 +53,7 @@ def parse_temperature(row):
 def parse_execution_time(row):
     return int(getattr(row, 'execution_time', row[2]))
 
+# Функции форматирования сообщений для каждого топика
 def format_task_1(row):
     device_id = parse_device_id(row)
     temperature = int(parse_temperature(row))
@@ -64,7 +68,7 @@ def format_task_2(row):
     device_id = parse_device_id(row)
     c_temp = parse_temperature(row)
     execution_time = parse_execution_time(row)
-    f_temp = c_temp * 1.8 + 32.0
+    f_temp = c_temp * 1.8 + 32.0  # Конвертация Цельсий -> Фаренгейт
     return json.dumps({
         "device_id": device_id,
         "temperature": f_temp,
@@ -81,6 +85,7 @@ def format_task_3(row):
         "execution_time": execution_time
     }, separators=(',', ':'))
 
+# Функция для вычисления глобальной средней температуры по всем устройствам
 class GlobalAvgFunction(KeyedProcessFunction):
     def __init__(self):
         self.count_state = None
@@ -122,6 +127,7 @@ class GlobalAvgFunction(KeyedProcessFunction):
         }
         yield json.dumps(res, separators=(',', ':'))
 
+# Функция скользящего окна из 5 сообщений для каждого устройства
 class Window5PerDeviceFunction(KeyedProcessFunction):
     def __init__(self):
         self.history_state = None
@@ -158,6 +164,7 @@ class Window5PerDeviceFunction(KeyedProcessFunction):
         }
         yield json.dumps(res, separators=(',', ':'))
 
+# Создание продюсера Kafka для отправки сообщений
 def create_producer(topic_name):
     producer_props = {
         'bootstrap.servers': BOOTSTRAP_SERVERS
@@ -169,7 +176,7 @@ def create_producer(topic_name):
     )
 
 def main():
-    logger.info("Initializing PyFlink Execution Environment...")
+    logger.info("Инициализация окружения исполнения PyFlink...")
     config = Configuration()
     config.set_string("env.java.opts", "--add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.lang.reflect=ALL-UNNAMED")
     jar_path = "file:///app/flink-sql-connector-kafka-1.17.2.jar"
@@ -182,6 +189,7 @@ def main():
 
     env.set_parallelism(1)
 
+    # Схема входных строк JSON
     type_info = Types.ROW_NAMED(
         ["device_id", "temperature", "execution_time"],
         [Types.INT(), Types.INT(), Types.INT()]
@@ -205,31 +213,31 @@ def main():
 
     input_stream = env.add_source(kafka_consumer)
 
-    # Task 1: Pass-through to topic_task_1
+    # Задача 1: Проходная пересылка в topic_task_1
     task_1_stream = input_stream.map(format_task_1, output_type=Types.STRING())
     task_1_stream.add_sink(create_producer("topic_task_1"))
 
-    # Task 2: Celsius to Fahrenheit to topic_task_2
+    # Задача 2: Конвертация температуры из Цельсия в Фаренгейт в topic_task_2
     task_2_stream = input_stream.map(format_task_2, output_type=Types.STRING())
     task_2_stream.add_sink(create_producer("topic_task_2"))
 
-    # Task 3: Filter temp > 50 to topic_task_3
+    # Задача 3: Фильтрация сообщений с температурой > 50 в topic_task_3
     task_3_stream = input_stream.filter(lambda r: parse_temperature(r) > 50) \
                                 .map(format_task_3, output_type=Types.STRING())
     task_3_stream.add_sink(create_producer("topic_task_3"))
 
-    # Task 4: Global average temperature to topic_task_4
+    # Задача 4: Расчет глобальной средней температуры по всем устройствам в topic_task_4
     task_4_stream = input_stream.key_by(lambda r: 1) \
                                 .process(GlobalAvgFunction(), output_type=Types.STRING()) \
                                 .set_parallelism(1)
     task_4_stream.add_sink(create_producer("topic_task_4"))
 
-    # Task 5: Per-device 5-message window average to topic_task_5
+    # Задача 5: Расчет скользящей средней температуры по 5 сообщениям для каждого устройства в topic_task_5
     task_5_stream = input_stream.key_by(lambda r: parse_device_id(r)) \
                                 .process(Window5PerDeviceFunction(), output_type=Types.STRING())
     task_5_stream.add_sink(create_producer("topic_task_5"))
 
-    logger.info("Executing PyFlink Kafka Streaming Job...")
+    logger.info("Запуск потоковой задачи PyFlink Kafka...")
     env.execute("PyFlink Streaming HW3 Job")
 
 if __name__ == "__main__":

@@ -1,10 +1,12 @@
 #!/bin/bash
 
+# Настройка путей Hadoop
 export HADOOP_HOME=/usr/local/hadoop
 export HADOOP_CONF_DIR=$HADOOP_HOME/etc/hadoop
 
 echo "Настройка конфигурации Hadoop..."
 
+# Конфигурация HDFS NameNode
 cat <<EOF > $HADOOP_CONF_DIR/core-site.xml
 <configuration>
     <property>
@@ -14,6 +16,7 @@ cat <<EOF > $HADOOP_CONF_DIR/core-site.xml
 </configuration>
 EOF
 
+# Конфигурация YARN ResourceManager
 cat <<EOF > $HADOOP_CONF_DIR/yarn-site.xml
 <configuration>
     <property>
@@ -23,6 +26,7 @@ cat <<EOF > $HADOOP_CONF_DIR/yarn-site.xml
 </configuration>
 EOF
 
+# Конфигурация MapReduce и classpath
 cat <<'EOF' > $HADOOP_CONF_DIR/mapred-site.xml
 <configuration>
     <property>
@@ -48,6 +52,7 @@ cat <<'EOF' > $HADOOP_CONF_DIR/mapred-site.xml
 </configuration>
 EOF
 
+# Ожидание готовности HDFS и появления тестовых данных
 echo "Ожидание тестовых данных (ждем появления файла /shadow.txt)..."
 until hdfs dfs -test -e /shadow.txt > /dev/null 2>&1; do
     echo "Файл /shadow.txt пока не найден, ждем 5 секунд..."
@@ -55,20 +60,25 @@ until hdfs dfs -test -e /shadow.txt > /dev/null 2>&1; do
 done
 echo "Файл /shadow.txt найден! Кластер полностью готов к работе."
 
+# Задача 1: Создание директории в HDFS
 echo "Задача 1: Создание директории /createme..."
 hdfs dfs -mkdir -p /createme
 
+# Задача 2: Удаление директории из HDFS
 echo "Задача 2: Удаление директории /delme..."
 hdfs dfs -rm -r -f -skipTrash /delme
 
+# Задача 3: Создание ненулевого текстового файла
 echo "Задача 3: Создание /nonnull.txt..."
 echo "arbitrary content" > /tmp/local_nonnull.txt
 hdfs dfs -put -f /tmp/local_nonnull.txt /nonnull.txt
 
+# Задача 4: Запуск джобы подсчета слов MapReduce (Wordcount)
 echo "Задача 4: Запуск MapReduce джобы Wordcount..."
 hdfs dfs -rm -r -f -skipTrash /output_wordcount
 yarn jar $HADOOP_HOME/share/hadoop/mapreduce/hadoop-mapreduce-examples-3.3.6.jar wordcount /shadow.txt /output_wordcount
 
+# Задача 5: Извлечение и запись результата подсчета слова "Innsmouth"
 echo "Задача 5: Извлечение количества 'Innsmouth'..."
 hdfs dfs -cat /output_wordcount/part-r-00000 | grep -w "Innsmouth" | awk '{print $2}' > /tmp/whataboutinsmouth.txt
 hdfs dfs -put -f /tmp/whataboutinsmouth.txt /whataboutinsmouth.txt
