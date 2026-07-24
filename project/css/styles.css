@@ -270,43 +270,48 @@ header {
     margin-top: 1.25rem;
 }
 
-.download-group {
+.control-label {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 0.4rem;
+    display: block;
+}
+
+.download-row {
     display: flex;
+    flex-direction: column;
     gap: 0.6rem;
-    align-items: center;
 }
 
 .format-select {
-    background: rgba(0, 0, 0, 0.35);
+    width: 100%;
+    background: rgba(0, 0, 0, 0.4);
     color: var(--text-primary);
     border: 1px solid var(--border-glass);
     border-radius: var(--radius-md);
-    padding: 0.75rem 0.85rem;
+    padding: 0.75rem 1rem;
     font-family: var(--font-main);
     font-weight: 600;
-    font-size: 0.88rem;
+    font-size: 0.9rem;
     outline: none;
     cursor: pointer;
     transition: var(--transition-fast);
 }
 
-.format-select:focus, .format-select:hover:not(:disabled) {
+.format-select:focus, .format-select:hover {
     border-color: var(--accent-secondary);
-    background: rgba(0, 0, 0, 0.55);
-}
-
-.format-select:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
+    background: rgba(0, 0, 0, 0.6);
 }
 
 .format-select option {
     background: #121620;
     color: var(--text-primary);
+    padding: 0.5rem;
 }
 
 .btn {
-    flex: 1;
+    width: 100%;
     padding: 0.8rem 1.25rem;
     border-radius: var(--radius-md);
     font-weight: 600;

@@ -72,16 +72,19 @@
                     </div>
 
                     <!-- Блок скачивания с выбором формата -->
-                    <div class="download-group" style="margin-top: 0.85rem;">
-                        <select id="downloadFormatSelect" class="format-select" disabled>
-                            <option value="png">PNG (.png)</option>
-                            <option value="jpg">JPG (.jpg)</option>
-                            <option value="bmp">BMP (.bmp)</option>
-                            <option value="heic">HEIC (.heic)</option>
-                        </select>
-                        <button class="btn btn-secondary" id="btnDownload" disabled style="flex: 1;">
-                            💾 Скачать результат
-                        </button>
+                    <div class="download-section" style="margin-top: 1.25rem;">
+                        <label class="control-label">Формат скачивания:</label>
+                        <div class="download-row">
+                            <select id="downloadFormatSelect" class="format-select">
+                                <option value="png">PNG (.png)</option>
+                                <option value="jpg">JPG (.jpg)</option>
+                                <option value="bmp">BMP (.bmp)</option>
+                                <option value="heic">HEIC (.heic)</option>
+                            </select>
+                            <button class="btn btn-secondary" id="btnDownload" disabled>
+                                💾 Скачать результат
+                            </button>
+                        </div>
                     </div>
                 </aside>
 

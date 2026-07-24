@@ -94,7 +94,6 @@ document.addEventListener('DOMContentLoaded', () => {
         slider.setImages(currentOriginalUrl, currentOriginalUrl);
         btnProcess.disabled = false;
         btnDownload.disabled = true;
-        downloadFormatSelect.disabled = true;
         updateStatus('idle', 0, `Загружен файл: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} МБ)`);
     }
 
@@ -117,7 +116,6 @@ document.addEventListener('DOMContentLoaded', () => {
             btnProcess.disabled = false;
             btnAbort.disabled = true;
             btnDownload.disabled = false;
-            downloadFormatSelect.disabled = false;
         } else if (status === 'failed' || status === 'aborted') {
             btnProcess.disabled = false;
             btnAbort.disabled = true;
@@ -131,7 +129,6 @@ document.addEventListener('DOMContentLoaded', () => {
         btnProcess.disabled = true;
         btnAbort.disabled = false;
         btnDownload.disabled = true;
-        downloadFormatSelect.disabled = true;
 
         activeTaskId = await api.submitTask(currentFileOrImageData);
 
