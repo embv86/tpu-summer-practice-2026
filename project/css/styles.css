@@ -263,7 +263,7 @@ header {
     min-height: 1.3em;
 }
 
-/* Action Buttons */
+/* Action Buttons & Format Selector Pills */
 .action-group {
     display: flex;
     gap: 0.75rem;
@@ -278,36 +278,38 @@ header {
     display: block;
 }
 
-.download-row {
-    display: flex;
-    flex-direction: column;
-    gap: 0.6rem;
+.format-pills {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.4rem;
+    background: rgba(0, 0, 0, 0.35);
+    padding: 0.3rem;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-glass);
 }
 
-.format-select {
-    width: 100%;
-    background: rgba(0, 0, 0, 0.4);
-    color: var(--text-primary);
-    border: 1px solid var(--border-glass);
-    border-radius: var(--radius-md);
-    padding: 0.75rem 1rem;
-    font-family: var(--font-main);
-    font-weight: 600;
-    font-size: 0.9rem;
-    outline: none;
+.format-pill {
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--text-secondary);
+    padding: 0.5rem 0.2rem;
+    border-radius: var(--radius-sm);
+    font-weight: 700;
+    font-size: 0.8rem;
     cursor: pointer;
     transition: var(--transition-fast);
+    text-align: center;
 }
 
-.format-select:focus, .format-select:hover {
-    border-color: var(--accent-secondary);
-    background: rgba(0, 0, 0, 0.6);
-}
-
-.format-select option {
-    background: #121620;
+.format-pill:hover {
     color: var(--text-primary);
-    padding: 0.5rem;
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.format-pill.active {
+    background: var(--accent-gradient);
+    color: #ffffff;
+    box-shadow: var(--shadow-glow);
 }
 
 .btn {

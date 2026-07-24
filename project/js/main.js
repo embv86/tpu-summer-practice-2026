@@ -21,7 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnProcess = document.getElementById('btnProcess');
     const btnAbort = document.getElementById('btnAbort');
     const btnDownload = document.getElementById('btnDownload');
-    const downloadFormatSelect = document.getElementById('downloadFormatSelect');
+    const formatPills = document.querySelectorAll('.format-pill');
 
     const statusBadge = document.getElementById('statusBadge');
     const progressBarFill = document.getElementById('progressBarFill');
@@ -41,6 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentOriginalUrl = null;
     let currentEnhancedUrl = null;
     let activeTaskId = null;
+    let selectedFormat = 'png';
 
     const statusMap = {
         idle: 'ОЖИДАНИЕ',
@@ -51,7 +52,17 @@ document.addEventListener('DOMContentLoaded', () => {
         failed: 'ОШИБКА'
     };
 
-    // 2. Навигация по вкладкам
+    // 2. Выбор формата скачивания через кнопки (PNG, JPG, BMP, HEIC)
+    formatPills.forEach(pill => {
+        pill.addEventListener('click', () => {
+            formatPills.forEach(p => p.classList.remove('active'));
+            pill.classList.add('active');
+            selectedFormat = pill.getAttribute('data-fmt') || 'png';
+            btnDownload.textContent = `💾 Скачать результат (.${selectedFormat})`;
+        });
+    });
+
+    // 3. Навигация по вкладкам
     tabBtns.forEach(btn => {
         btn.addEventListener('click', () => {
             tabBtns.forEach(b => b.classList.remove('active'));
@@ -62,7 +73,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // 3. Обработка выбора файлов и Drag and Drop
+    // 4. Обработка выбора файлов и Drag and Drop
     dropZone.addEventListener('click', () => fileInput.click());
 
     dropZone.addEventListener('dragover', (e) => {
@@ -97,7 +108,7 @@ document.addEventListener('DOMContentLoaded', () => {
         updateStatus('idle', 0, `Загружен файл: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} МБ)`);
     }
 
-    // 4. Слушатель событий API
+    // 5. Слушатель событий API
     api.onStatusChange((detail) => {
         const { taskId, status, progress, message, metrics, error } = detail;
         if (taskId !== activeTaskId) return;
@@ -122,7 +133,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // 5. Обработчики кнопок
+    // 6. Обработчики кнопок
     btnProcess.addEventListener('click', async () => {
         if (!currentFileOrImageData) return;
 
@@ -153,23 +164,23 @@ document.addEventListener('DOMContentLoaded', () => {
     btnDownload.addEventListener('click', async () => {
         if (!activeTaskId) return;
 
-        const selectedFormat = downloadFormatSelect.value || 'png';
+        const fmt = selectedFormat || 'png';
         btnDownload.disabled = true;
         btnDownload.textContent = '⏳ Сохранение...';
 
         try {
-            const blob = await api.getResult(activeTaskId, selectedFormat);
+            const blob = await api.getResult(activeTaskId, fmt);
             const downloadUrl = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = downloadUrl;
-            a.download = `ml_enhanced_${Date.now()}.${selectedFormat}`;
+            a.download = `ml_enhanced_${Date.now()}.${fmt}`;
             a.click();
             setTimeout(() => URL.revokeObjectURL(downloadUrl), 5000);
         } catch (err) {
             console.error('Ошибка скачивания файла:', err);
         } finally {
             btnDownload.disabled = false;
-            btnDownload.textContent = '💾 Скачать результат';
+            btnDownload.textContent = `💾 Скачать результат (.${fmt})`;
         }
     });
 
